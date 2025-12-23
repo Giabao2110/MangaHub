@@ -1,0 +1,13 @@
+<div class="nav-buttons">
+            <button id="nav-admin" style="display:none; background: orange;" onclick="loadAdminStats()">Admin</button>
+            
+            <span id="guest-area">
+                <a href="/register" class="btn" style="background: #28a745; text-decoration: none; padding: 8px 15px; color: white; border-radius: 5px;">Đăng Ký</a>
+                <a href="/login" class="btn" style="background: var(--accent); text-decoration: none; padding: 8px 15px; color: white; border-radius: 5px;">Đăng Nhập</a>
+            </span>
+
+            <span id="user-area" style="display: none;">
+                <span id="username-display" style="margin-right: 10px; font-weight: bold;"></span>
+                <button onclick="logout()" style="background: #dc3545;">Thoát</button>
+            </span>
+        </div>
