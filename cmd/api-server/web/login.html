@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Đăng Nhập - MangaHub</title>
+    <link rel="stylesheet" href="/static/style.css" />
+    <style>
+      body {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        background: #0b0c2a;
+      }
+      .auth-card {
+        background: #161b40;
+        padding: 40px;
+        border-radius: 15px;
+        width: 400px;
+        text-align: center;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+      }
+      input {
+        width: 100%;
+        padding: 12px;
+        margin: 10px 0;
+        border-radius: 5px;
+        border: 1px solid #333;
+        background: #0b0c2a;
+        color: white;
+        box-sizing: border-box;
+      }
+      button {
+        width: 100%;
+        padding: 12px;
+        background: #ff0055;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        font-weight: bold;
+        cursor: pointer;
+        margin-top: 10px;
+      }
+      button:hover {
+        background: #d60045;
+      }
+      .error-msg {
+        color: #ff4444;
+        font-size: 0.9em;
+        display: none;
+        margin-top: 5px;
+        text-align: left;
+      }
+      a {
+        color: #aaa;
+        text-decoration: none;
+        font-size: 0.9em;
+      }
+      a:hover {
+        color: white;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="auth-card">
+      <h2 style="color: white; margin-bottom: 20px">Đăng Nhập</h2>
+
+      <input type="text" id="login-user" placeholder="Tên đăng nhập" />
+      <div id="err-user" class="error-msg"></div>
+
+      <input type="password" id="login-pass" placeholder="Mật khẩu" />
+      <div id="err-pass" class="error-msg"></div>
+
+      <button onclick="handleLogin()">Đăng Nhập</button>
+
+      <p style="margin-top: 20px">
+        <a href="/register">Chưa có tài khoản? Đăng ký ngay</a>
+      </p>
+      <p><a href="/">← Quay lại trang chủ</a></p>
+    </div>
+
+    <script>
+      async function handleLogin() {
+        const u = document.getElementById("login-user").value.trim();
+        const p = document.getElementById("login-pass").value;
+
+        // Validate cơ bản
+        document
+          .querySelectorAll(".error-msg")
+          .forEach((el) => (el.style.display = "none"));
+        if (!u) return showError("err-user", "Vui lòng nhập tên đăng nhập");
+        if (!p) return showError("err-pass", "Vui lòng nhập mật khẩu");
+
+        try {
+          const res = await fetch("/api/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username: u, password: p }),
+          });
+          const data = await res.json();
+
+          if (res.ok) {
+            // Lưu thông tin vào bộ nhớ trình duyệt
+            localStorage.setItem("token", data.token);
+            localStorage.setItem("role", data.role);
+            localStorage.setItem("user", data.username);
+
+            // Chuyển hướng về trang chủ
+            window.location.href = "/";
+          } else {
+            alert("❌ Đăng nhập thất bại: " + data.error);
+          }
+        } catch (e) {
+          alert("Lỗi kết nối Server");
+        }
+      }
+
+      function showError(id, msg) {
+        const el = document.getElementById(id);
+        el.innerText = msg;
+        el.style.display = "block";
+      }
+    </script>
+  </body>
+</html>

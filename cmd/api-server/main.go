@@ -1,165 +1,291 @@
 package main
 
 import (
-	"database/sql"
 	"fmt"
-	"io/ioutil"
 	"log"
+	"os" // Dùng os thay cho ioutil để hết bị gạch chéo
 	"sort"
 	"strings"
 	"time"
+
+	"mangahub/pkg/database"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-contrib/gzip"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v4"
-	_ "github.com/mattn/go-sqlite3"
 	"golang.org/x/crypto/bcrypt"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 var SECRET_KEY = []byte("mangahub_secret_2025")
-
-func InitDB() *sql.DB {
-	db, err := sql.Open("sqlite3", "./mangahub.db")
-	if err != nil {
-		log.Fatal("Lỗi kết nối DB:", err)
-	}
-
-	// Tạo bảng (Sử dụng '=' thay vì ':=' để tránh lỗi trùng biến)
-	sqlStmt := `
-	CREATE TABLE IF NOT EXISTS users (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		username TEXT UNIQUE,
-		password TEXT,
-		role TEXT DEFAULT 'user',
-		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-	);
-	CREATE TABLE IF NOT EXISTS favorites (user_id INTEGER, manga_slug TEXT, PRIMARY KEY(user_id, manga_slug));
-	CREATE TABLE IF NOT EXISTS comments (id INTEGER PRIMARY KEY, user_id INTEGER, manga_slug TEXT, content TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);
-	`
-	_, err = db.Exec(sqlStmt)
-	if err != nil {
-		log.Printf("Lỗi tạo bảng: %q\n", err)
-	}
-
-	// Tạo Admin mặc định
-	hash, _ := bcrypt.GenerateFromPassword([]byte("123456"), 14)
-	// Dùng IGNORE để không lỗi nếu admin đã tồn tại
-	db.Exec("INSERT OR IGNORE INTO users (username, password, role) VALUES (?, ?, ?)", "admin", string(hash), "admin")
-
-	return db
-}
+var titleCaser = cases.Title(language.Und)
 
 func main() {
-	db := InitDB()
+	// =====================
+	// INIT DATABASE
+	// =====================
+	db := database.InitDB("./mangahub.db")
+	defer db.Close()
+	log.Println("✅ SQLite connected")
 
-	// Khởi tạo Router
+	// =====================
+	// INIT GIN
+	// =====================
 	r := gin.Default()
 	r.Use(cors.Default())
 	r.Use(gzip.Gzip(gzip.DefaultCompression))
 
-	// --- CẤU HÌNH FILE TĨNH ---
-	r.Static("/static", "./web") // Chứa style.css, app.js
-	r.Static("/data", "./data")  // Chứa ảnh truyện
+	// =====================
+	// STATIC FILES
+	// =====================
+	r.Static("/static", "./web/static")
+	r.Static("/data", "./data")
 
-	// Routing cho các trang HTML
-	r.StaticFile("/", "./web/index.html")
-	r.StaticFile("/login", "./web/login.html")
-	r.StaticFile("/register", "./web/register.html")
+	r.GET("/", func(c *gin.Context) {
+		c.File("./web/index.html")
+	})
 
-	// --- API AUTH ---
+	r.GET("/login", func(c *gin.Context) {
+		c.File("./web/login.html")
+	})
 
-	// 1. Đăng Ký
+	r.GET("/register", func(c *gin.Context) {
+		c.File("./web/register.html")
+	})
+
+	// =====================
+	// AUTH APIs (POST)
+	// =====================
+
+	// REGISTER - Đăng ký tài khoản
 	r.POST("/api/register", func(c *gin.Context) {
 		var u struct {
 			Username string `json:"username"`
 			Password string `json:"password"`
 		}
+
 		if err := c.ShouldBindJSON(&u); err != nil {
 			c.JSON(400, gin.H{"error": "Dữ liệu không hợp lệ"})
 			return
 		}
 
+		// Hash mật khẩu an toàn
 		hash, _ := bcrypt.GenerateFromPassword([]byte(u.Password), 14)
-		_, err := db.Exec("INSERT INTO users (username, password) VALUES (?, ?)", u.Username, string(hash))
+
+		_, err := db.Exec(
+			"INSERT INTO users (id, username, password_hash) VALUES (?, ?, ?)",
+			u.Username,
+			u.Username,
+			string(hash),
+		)
 
 		if err != nil {
-			c.JSON(400, gin.H{"error": "Tên đăng nhập đã tồn tại!"})
+			c.JSON(400, gin.H{"error": "Username đã tồn tại"})
 			return
 		}
-		c.JSON(200, gin.H{"message": "Đăng ký thành công!"})
+
+		c.JSON(200, gin.H{"message": "Đăng ký thành công"})
 	})
 
-	// 2. Đăng Nhập
+	// LOGIN - Đăng nhập & Tạo Token
 	r.POST("/api/login", func(c *gin.Context) {
 		var u struct {
 			Username string `json:"username"`
 			Password string `json:"password"`
 		}
+
 		if err := c.ShouldBindJSON(&u); err != nil {
 			c.JSON(400, gin.H{"error": "Dữ liệu không hợp lệ"})
 			return
 		}
 
-		var id int
-		var hash, role string
-
-		// Khai báo err rõ ràng để tránh lỗi 'no new variables'
-		err := db.QueryRow("SELECT id, password, role FROM users WHERE username=?", u.Username).Scan(&id, &hash, &role)
+		var id, hash, role string
+		err := db.QueryRow(
+			"SELECT id, password_hash, role FROM users WHERE username=?",
+			u.Username,
+		).Scan(&id, &hash, &role)
 
 		if err != nil {
 			c.JSON(401, gin.H{"error": "Tài khoản không tồn tại"})
 			return
 		}
 
+		// So sánh mật khẩu
 		if err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(u.Password)); err != nil {
 			c.JSON(401, gin.H{"error": "Sai mật khẩu"})
 			return
 		}
 
-		// Tạo Token
+		// Tạo JWT Token
 		token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-			"id": id, "user": u.Username, "role": role, "exp": time.Now().Add(24 * time.Hour).Unix(),
+			"id":   id,
+			"user": u.Username,
+			"role": role,
+			"exp":  time.Now().Add(24 * time.Hour).Unix(),
 		})
+
 		tokenString, _ := token.SignedString(SECRET_KEY)
 
-		c.JSON(200, gin.H{"token": tokenString, "role": role, "username": u.Username})
+		c.JSON(200, gin.H{
+			"token":    tokenString,
+			"username": u.Username,
+			"role":     role,
+		})
 	})
 
-	// --- API MANGAS ---
+	// =====================
+	// MANGA APIs
+	// =====================
+
+	// LIST MANGAS - Lấy danh sách truyện
 	r.GET("/api/mangas", func(c *gin.Context) {
-		var mangas []gin.H
-		files, _ := ioutil.ReadDir("./data")
+		mangas := []gin.H{}
+
+		files, err := os.ReadDir("./data")
+		if err != nil {
+			c.JSON(200, mangas)
+			return
+		}
+
 		for _, f := range files {
 			if f.IsDir() {
+				slug := f.Name()
+				title := titleCaser.String(strings.ReplaceAll(slug, "-", " "))
+
+				// LOGIC QUÉT ẢNH THÔNG MINH:
+				// Tìm file ảnh đầu tiên trong thư mục để làm ảnh bìa
+				coverImg := ""
+				subFiles, _ := os.ReadDir("./data/" + slug)
+				for _, sf := range subFiles {
+					name := strings.ToLower(sf.Name())
+					// Kiểm tra xem có phải file ảnh không
+					if !sf.IsDir() && (strings.HasSuffix(name, ".jpg") || strings.HasSuffix(name, ".png") || strings.HasSuffix(name, ".jpeg")) {
+						coverImg = sf.Name()
+						break // Lấy file ảnh đầu tiên tìm thấy làm Cover
+					}
+				}
+
+				// Nếu không thấy ảnh nào, dùng ảnh mặc định để tránh lỗi giao diện
+				finalCover := fmt.Sprintf("/data/%s/%s", slug, coverImg)
+				if coverImg == "" {
+					finalCover = "https://via.placeholder.com/200x300?text=No+Cover"
+				}
+
 				mangas = append(mangas, gin.H{
-					"slug":     f.Name(),
-					"title":    strings.Title(strings.ReplaceAll(f.Name(), "-", " ")),
-					"cover":    fmt.Sprintf("/data/%s/cover.jpg", f.Name()),
+					"slug":     slug,
+					"title":    title,
+					"cover":    finalCover,
 					"category": "Manga",
 				})
 			}
 		}
+
 		c.JSON(200, mangas)
 	})
 
+	// READ CHAPTER - Lấy danh sách ảnh trong Chapter
 	r.GET("/api/read/:slug/:chap", func(c *gin.Context) {
-		path := fmt.Sprintf("./data/%s/%s", c.Param("slug"), c.Param("chap"))
-		files, err := ioutil.ReadDir(path)
+		dir := fmt.Sprintf("./data/%s/%s", c.Param("slug"), c.Param("chap"))
+
+		files, err := os.ReadDir(dir)
 		if err != nil {
 			c.JSON(404, gin.H{"error": "Không tìm thấy chapter"})
 			return
 		}
-		var images []string
+
+		images := []string{}
 		for _, f := range files {
-			if !f.IsDir() && (strings.HasSuffix(f.Name(), ".jpg") || strings.HasSuffix(f.Name(), ".png")) {
-				images = append(images, fmt.Sprintf("/%s/%s", path, f.Name()))
+			name := strings.ToLower(f.Name())
+			if !f.IsDir() && (strings.HasSuffix(name, ".jpg") || strings.HasSuffix(name, ".png") || strings.HasSuffix(name, ".jpeg")) {
+				images = append(images, fmt.Sprintf("/data/%s/%s/%s", c.Param("slug"), c.Param("chap"), f.Name()))
 			}
 		}
+
 		sort.Strings(images)
 		c.JSON(200, images)
 	})
 
-	fmt.Println("🚀 Server đang chạy tại: http://localhost:8080")
+	// 1. Lấy danh sách Chapter
+    r.GET("/api/manga/:slug", func(c *gin.Context) {
+        slug := c.Param("slug")
+        path := fmt.Sprintf("./data/%s", slug)
+        files, err := os.ReadDir(path)
+        if err != nil {
+            c.JSON(404, gin.H{"error": "Không tìm thấy truyện"})
+            return
+        }
+        chapters := []string{}
+        for _, f := range files {
+            if f.IsDir() { chapters = append(chapters, f.Name()) }
+        }
+        sort.Strings(chapters)
+        c.JSON(200, gin.H{"slug": slug, "title": titleCaser.String(strings.ReplaceAll(slug, "-", " ")), "chapters": chapters})
+    })
+
+    // 2. Thêm vào Wishlist (Yêu thích)
+    r.POST("/api/wishlist", func(c *gin.Context) {
+        var req struct {
+            Username string `json:"username"`
+            Slug     string `json:"slug"`
+        }
+        if err := c.ShouldBindJSON(&req); err != nil { return }
+        _, err := db.Exec("INSERT INTO wishlist (username, manga_slug) VALUES (?, ?)", req.Username, req.Slug)
+        if err != nil {
+            c.JSON(400, gin.H{"error": "Đã có trong danh sách yêu thích"})
+            return
+        }
+        c.JSON(200, gin.H{"message": "Đã thêm vào Wishlist"})
+    })
+
+    // 3. Gửi tin nhắn cho Admin
+    r.POST("/api/messages", func(c *gin.Context) {
+        var msg struct {
+            Username string `json:"username"`
+            Content  string `json:"content"`
+        }
+        c.ShouldBindJSON(&msg)
+        _, err := db.Exec("INSERT INTO messages (username, content, created_at) VALUES (?, ?, ?)", 
+            msg.Username, msg.Content, time.Now())
+        if err != nil {
+            c.JSON(500, gin.H{"error": "Lỗi gửi tin nhắn"})
+            return
+        }
+        c.JSON(200, gin.H{"message": "Đã gửi thành công"})
+    })
+
+	// API lấy danh sách tin nhắn cho Admin
+	r.GET("/api/admin/messages", func(c *gin.Context) {
+	// Trong thực tế bạn nên kiểm tra quyền Admin ở đây bằng Middleware
+		rows, err := db.Query("SELECT username, content, created_at FROM messages ORDER BY created_at DESC")
+		if err != nil {
+			c.JSON(500, gin.H{"error": "Không thể lấy tin nhắn"})
+			return
+		}
+		defer rows.Close()
+
+		type Msg struct {
+			Username  string `json:"username"`
+			Content   string `json:"content"`
+			CreatedAt string `json:"created_at"`
+		}
+		var msgs []Msg
+		for rows.Next() {
+			var m Msg
+			rows.Scan(&m.Username, &m.Content, &m.CreatedAt)
+			msgs = append(msgs, m)
+		}
+		c.JSON(200, msgs)
+	})
+
+	r.GET("/admin", func(c *gin.Context) {
+    c.File("./web/admin.html")
+	})
+
+	// =====================
+	// START SERVER
+	// =====================
+	fmt.Println("🚀 Server running at http://localhost:8080")
 	r.Run(":8080")
 }

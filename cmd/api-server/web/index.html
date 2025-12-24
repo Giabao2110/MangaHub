@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <title>MangaHub - Đọc Truyện Tranh</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <link rel="stylesheet" href="/static/style.css" />
+
+    <style>
+      body {
+        margin: 0;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background: #0b0c2a;
+        color: white;
+      }
+
+      header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 15px 30px;
+        background: #161b40;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+        position: sticky;
+        top: 0;
+        z-index: 1000;
+      }
+
+      h1 {
+        margin: 0;
+        color: #ff0055;
+        cursor: pointer;
+      }
+
+      .btn {
+        padding: 8px 18px;
+        border-radius: 5px;
+        color: white;
+        text-decoration: none;
+        display: inline-block;
+        border: none;
+        font-weight: bold;
+        transition: opacity 0.2s;
+        cursor: pointer;
+      }
+
+      .btn:hover {
+        opacity: 0.8;
+      }
+
+      main {
+        padding: 30px;
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+
+      .search-box {
+        margin-bottom: px;
+        text-align: center;
+      }
+
+      .search-box input {
+        width: 100%;
+        max-width: 500px;
+        padding: 12px 20px;
+        border-radius: 25px;
+        border: 2px solid #161b40;
+        background: #1f244d;
+        color: white;
+        outline: none;
+      }
+
+      .search-box input:focus {
+        border-color: #ff0055;
+      }
+
+      /* Grid hiển thị danh sách truyện */
+      #manga-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        gap: 25px;
+      }
+
+      .manga-card {
+        background: #161b40;
+        border-radius: 10px;
+        overflow: hidden;
+        cursor: pointer;
+        transition: transform 0.3s, box-shadow 0.3s;
+      }
+
+      .manga-card:hover {
+        transform: translateY(-10px);
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.5);
+      }
+
+      .manga-cover {
+        width: 100%;
+        height: 260px;
+        object-fit: cover;
+      }
+
+      .manga-info {
+        padding: 12px;
+      }
+
+      .manga-title {
+        font-weight: bold;
+        font-size: 0.95rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+    </style>
+  </head>
+
+  <body>
+    <header>
+      <h1 onclick="location.href='/'">MangaHub</h1>
+
+      <div class="nav-buttons">
+        <button
+          id="nav-admin"
+          class="btn"
+          style="display: none; background: #f39c12"
+          onclick="alert('Chức năng Admin đang phát triển')"
+        >
+          Admin
+        </button>
+
+        <span id="guest-area">
+          <a href="/register" class="btn" style="background: #28a745"
+            >Đăng Ký</a
+          >
+          <a href="/login" class="btn" style="background: #ff0055">Đăng Nhập</a>
+        </span>
+
+        <span id="user-area" style="display: none">
+          <span
+            id="username-display"
+            style="margin-right: 10px; color: #00d4ff"
+          ></span>
+          <button onclick="logout()" class="btn" style="background: #dc3545">
+            Thoát
+          </button>
+        </span>
+      </div>
+    </header>
+
+    <main>
+      <div class="search-box">
+        <input
+          type="text"
+          placeholder="🔍 Tìm tên truyện bạn muốn xem..."
+          oninput="searchManga(this.value)"
+        />
+      </div>
+
+      <h2
+        style="
+          margin-bottom: 20px;
+          border-left: 4px solid #ff0055;
+          padding-left: 15px;
+        "
+      >
+        Danh Sách Truyện
+      </h2>
+
+      <div id="manga-grid"></div>
+    </main>
+
+    <script src="/static/app.js"></script>
+  </body>
+</html>

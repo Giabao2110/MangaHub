@@ -7,17 +7,22 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
+// InitDB khởi tạo kết nối và tự động tạo các bảng cần thiết
 func InitDB(path string) *sql.DB {
+	// Mở kết nối tới file sqlite3
 	db, err := sql.Open("sqlite3", path)
 	if err != nil {
-		log.Fatalf("open db: %v", err)
+		log.Fatalf("❌ Không thể mở database: %v", err)
 	}
 
-	// Bật Foreign Keys
-	db.Exec("PRAGMA foreign_keys = ON")
+	// Bật Foreign Keys để đảm bảo ràng buộc dữ liệu
+	if _, err := db.Exec("PRAGMA foreign_keys = ON"); err != nil {
+		log.Println("⚠️ Lỗi bật Foreign Keys:", err)
+	}
 
+	// Danh sách các câu lệnh tạo bảng (Schemas)
 	schemas := []string{
-		// 1. Bảng Users (Thêm cột Role để phân biệt Admin/User)
+		// 1. Bảng Users (Lưu tài khoản và quyền hạn)
 		`CREATE TABLE IF NOT EXISTS users (
 			id TEXT PRIMARY KEY,
 			username TEXT UNIQUE,
@@ -25,44 +30,39 @@ func InitDB(path string) *sql.DB {
 			role TEXT DEFAULT 'user', 
 			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 		);`,
-		// 2. Bảng Mangas (Chứa thông tin truyện)
+
+		// 2. Bảng Wishlist (Lưu các bộ truyện yêu thích của User)
+		`CREATE TABLE IF NOT EXISTS wishlist (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			username TEXT,
+			manga_slug TEXT,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			UNIQUE(username, manga_slug) -- Đảm bảo không bị trùng lặp yêu thích
+		);`,
+
+		// 3. Bảng Messages (Dùng làm Comment hoặc gửi tin nhắn cho Admin)
+		`CREATE TABLE IF NOT EXISTS messages (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			username TEXT,
+			content TEXT,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+		);`,
+
+		// 4. Bảng Mangas (Dùng để lưu metadata truyện nếu bạn muốn quản lý nâng cao hơn sau này)
 		`CREATE TABLE IF NOT EXISTS mangas (
 			id TEXT PRIMARY KEY,
 			title TEXT,
 			author TEXT,
 			description TEXT,
 			cover_url TEXT,
-			status TEXT, -- 'ongoing', 'completed'
 			category TEXT
-		);`,
-		// 3. Bảng Chapters
-		`CREATE TABLE IF NOT EXISTS chapters (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			manga_id TEXT,
-			chapter_number INTEGER,
-			title TEXT,
-			content_images TEXT, -- JSON string chứa danh sách ảnh
-			FOREIGN KEY(manga_id) REFERENCES mangas(id)
-		);`,
-		// 4. Bảng Favorites (Tủ truyện)
-		`CREATE TABLE IF NOT EXISTS favorites (
-			user_id TEXT,
-			manga_id TEXT,
-			PRIMARY KEY (user_id, manga_id)
-		);`,
-		// 5. Bảng Comments (Bình luận)
-		`CREATE TABLE IF NOT EXISTS comments (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			user_id TEXT,
-			manga_id TEXT,
-			content TEXT,
-			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 		);`,
 	}
 
+	// Thực thi từng câu lệnh tạo bảng
 	for _, schema := range schemas {
 		if _, err := db.Exec(schema); err != nil {
-			log.Printf("Error migrating schema: %v", err)
+			log.Printf("❌ Lỗi khi khởi tạo schema: %v", err)
 		}
 	}
 
