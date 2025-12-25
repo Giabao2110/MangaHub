@@ -1,99 +1,104 @@
 :root {
-    --bg-main: #0b0c2a; /* Màu tối Anime */
-    --bg-card: #161b40;
-    --accent: #ff0055;  /* Màu Neon nổi bật */
-    --text: #e0e6ed;
+  --bg-main: #0b0c2a;
+  --bg-card: #161b40;
+  --accent: #ff0055;
+  --accent-hover: #ff3377;
+  --text: #e0e6ed;
+  --shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
 }
 
 body {
-    background-color: var(--bg-main);
-    color: var(--text);
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    margin: 0;
-    overflow-x: hidden;
+  background-color: var(--bg-main);
+  color: var(--text);
+  font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  margin: 0;
+  line-height: 1.6;
 }
 
-/* Navbar mờ ảo (Glassmorphism) */
-.navbar {
-    background: rgba(11, 12, 42, 0.85);
-    backdrop-filter: blur(10px);
-    position: sticky;
-    top: 0;
-    z-index: 1000;
-    padding: 15px 30px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 1px solid rgba(255,255,255,0.1);
+/* Section Titles */
+h2.section-title {
+  font-size: 1.8rem;
+  font-weight: 800; /* Font chữ đậm hơn */
+  margin-bottom: 25px;
+  border-left: 5px solid var(--accent);
+  padding-left: 15px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
 }
 
-.brand { font-size: 1.8rem; font-weight: bold; color: var(--accent); text-transform: uppercase; letter-spacing: 2px; }
-
-/* Grid truyện */
-.manga-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-    gap: 25px;
-    padding: 30px;
+/* Manga Grid - Responsive */
+#manga-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 25px;
 }
 
+/* Responsive cho Mobile: 2 cột */
+@media (max-width: 480px) {
+  #manga-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+    padding: 10px;
+  }
+  h2.section-title {
+    font-size: 1.4rem;
+  }
+}
+
+/* Manga Card Enhancement */
 .manga-card {
-    background: var(--bg-card);
-    border-radius: 12px;
-    overflow: hidden;
-    transition: transform 0.3s, box-shadow 0.3s;
-    cursor: pointer;
-    position: relative;
+  background: var(--bg-card);
+  border-radius: 12px;
+  overflow: hidden;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  cursor: pointer;
+  position: relative;
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .manga-card:hover {
-    transform: translateY(-10px);
-    box-shadow: 0 10px 20px rgba(255, 0, 85, 0.3); /* Hiệu ứng phát sáng */
+  transform: translateY(-12px) scale(1.02);
+  box-shadow: 0 15px 30px rgba(255, 0, 85, 0.2);
+  border-color: var(--accent);
+}
+
+.manga-cover-wrapper {
+  position: relative;
+  overflow: hidden;
+  height: 260px;
 }
 
 .manga-cover {
-    width: 100%;
-    height: 260px;
-    object-fit: cover;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.5s ease;
 }
 
-.manga-info { padding: 15px; }
-.manga-title { font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
-/* Trình đọc truyện */
-#reader-modal {
-    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background: black; z-index: 2000; display: none;
-    flex-direction: column;
+.manga-card:hover .manga-cover {
+  transform: scale(1.1); /* Phóng to nhẹ ảnh */
+  filter: brightness(0.7); /* Làm tối nhẹ để nổi bật overlay */
 }
 
-/* Chế độ cuộn (Webtoon) */
-.reader-scroll { overflow-y: auto; text-align: center; height: 100%; }
-.reader-scroll img { max-width: 800px; width: 100%; display: block; margin: 0 auto; }
-
-/* Chế độ Lật trang (Single Page) */
-.reader-flip { 
-    display: flex; justify-content: center; align-items: center; height: 100%; 
-}
-.reader-flip img { max-height: 95vh; max-width: 95vw; object-fit: contain; }
-
-.controls {
-    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-    background: rgba(0,0,0,0.7); padding: 10px 20px; border-radius: 30px;
-    display: flex; gap: 15px;
+/* Load More Button Style */
+.load-more-container {
+  text-align: center;
+  margin-top: 40px;
+  margin-bottom: 50px;
 }
 
-button {
-    background: var(--accent); color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer; font-weight: bold;
-    transition: 0.2s;
-}
-button:hover { filter: brightness(1.2); }
-button.secondary { background: #444; }
-
-/* Input Search */
-.search-box {
-    padding: 8px 15px; border-radius: 20px; border: none; background: #23295e; color: white; width: 300px;
+.btn-load-more {
+  background: transparent;
+  border: 2px solid var(--accent);
+  color: var(--accent);
+  padding: 12px 40px;
+  font-size: 1rem;
+  border-radius: 30px;
+  transition: all 0.3s;
 }
 
-/* Admin Dashboard */
-#admin-panel { display: none; padding: 20px; background: #1a1125; border: 1px solid var(--accent); margin: 20px; border-radius: 10px; }
+.btn-load-more:hover {
+  background: var(--accent);
+  color: white;
+  box-shadow: 0 0 20px rgba(255, 0, 85, 0.4);
+}

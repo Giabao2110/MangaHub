@@ -1,95 +1,148 @@
 <!DOCTYPE html>
 <html lang="vi">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Đăng Ký - MangaHub</title>
-    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="/static/style.css" />
     <style>
-        body { display: flex; justify-content: center; align-items: center; height: 100vh; background: #0b0c2a; }
-        .auth-card { background: #161b40; padding: 40px; border-radius: 15px; width: 400px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-        input { width: 100%; padding: 12px; margin: 10px 0; border-radius: 5px; border: 1px solid #333; background: #0b0c2a; color: white; box-sizing: border-box; }
-        button { width: 100%; padding: 12px; background: #28a745; color: white; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; margin-top: 10px; }
-        button:hover { background: #218838; }
-        .error-msg { color: #ff4444; font-size: 0.9em; display: none; margin-top: 5px; text-align: left; }
-        a { color: #aaa; text-decoration: none; font-size: 0.9em; }
-        a:hover { color: white; }
+      body {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        background: #0b0c2a;
+      }
+      .auth-card {
+        background: #161b40;
+        padding: 40px;
+        border-radius: 15px;
+        width: 400px;
+        text-align: center;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+      }
+      input {
+        width: 100%;
+        padding: 12px;
+        margin: 10px 0;
+        border-radius: 5px;
+        border: 1px solid #333;
+        background: #0b0c2a;
+        color: white;
+        box-sizing: border-box;
+      }
+      button {
+        width: 100%;
+        padding: 12px;
+        background: #28a745;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        font-weight: bold;
+        cursor: pointer;
+        margin-top: 10px;
+      }
+      button:hover {
+        background: #218838;
+      }
+      .error-msg {
+        color: #ff4444;
+        font-size: 0.9em;
+        display: none;
+        margin-top: 5px;
+        text-align: left;
+      }
+      a {
+        color: #aaa;
+        text-decoration: none;
+        font-size: 0.9em;
+      }
+      a:hover {
+        color: white;
+      }
     </style>
-</head>
-<body>
-
+  </head>
+  <body>
     <div class="auth-card">
-        <h2 style="color: white; margin-bottom: 20px;">Đăng Ký Tài Khoản</h2>
-        
-        <input type="text" id="reg-user" placeholder="Tên đăng nhập">
-        <div id="err-user" class="error-msg"></div>
+      <h2 style="color: white; margin-bottom: 20px">Đăng Ký Tài Khoản</h2>
 
-        <input type="password" id="reg-pass" placeholder="Mật khẩu (tối thiểu 6 ký tự)">
-        <div id="err-pass" class="error-msg"></div>
+      <input type="text" id="reg-user" placeholder="Tên đăng nhập" />
+      <div id="err-user" class="error-msg"></div>
 
-        <input type="password" id="reg-confirm" placeholder="Nhập lại mật khẩu">
-        <div id="err-confirm" class="error-msg"></div>
+      <input
+        type="password"
+        id="reg-pass"
+        placeholder="Mật khẩu (tối thiểu 6 ký tự)"
+      />
+      <div id="err-pass" class="error-msg"></div>
 
-        <button onclick="handleRegister()">Đăng Ký Ngay</button>
-        
-        <p style="margin-top: 20px;">
-            <a href="/login">Đã có tài khoản? Đăng nhập</a>
-        </p>
+      <input type="password" id="reg-confirm" placeholder="Nhập lại mật khẩu" />
+      <div id="err-confirm" class="error-msg"></div>
+
+      <button onclick="handleRegister()">Đăng Ký Ngay</button>
+
+      <p style="margin-top: 20px">
+        <a href="/login">Đã có tài khoản? Đăng nhập</a>
+      </p>
     </div>
 
     <script>
-        async function handleRegister() {
-            // 1. Lấy dữ liệu
-            const u = document.getElementById("reg-user").value.trim();
-            const p = document.getElementById("reg-pass").value;
-            const c = document.getElementById("reg-confirm").value;
-            
-            // Reset lỗi
-            document.querySelectorAll('.error-msg').forEach(el => el.style.display = 'none');
+      async function handleRegister() {
+        // 1. Lấy dữ liệu
+        const u = document.getElementById("reg-user").value.trim();
+        const p = document.getElementById("reg-pass").value;
+        const c = document.getElementById("reg-confirm").value;
 
-            // 2. VALIDATE (Kiểm tra dữ liệu)
-            let isValid = true;
+        // Reset lỗi
+        document
+          .querySelectorAll(".error-msg")
+          .forEach((el) => (el.style.display = "none"));
 
-            if (u.length < 3) {
-                showError('err-user', 'Tên đăng nhập phải dài hơn 3 ký tự');
-                isValid = false;
-            }
+        // 2. VALIDATE (Kiểm tra dữ liệu)
+        let isValid = true;
 
-            if (p.length < 6) {
-                showError('err-pass', 'Mật khẩu quá ngắn (phải >= 6 ký tự)');
-                isValid = false;
-            }
-
-            if (p !== c) {
-                showError('err-confirm', 'Mật khẩu nhập lại không khớp!');
-                isValid = false;
-            }
-
-            if (!isValid) return; // Nếu lỗi thì dừng lại, không gửi server
-
-            // 3. Gửi API
-            try {
-                const res = await fetch("http://localhost:8080/api/register", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ username: u, password: p })
-                });
-                const data = await res.json();
-
-                if (res.ok) {
-                    alert("✅ Đăng ký thành công! Chuyển sang trang đăng nhập...");
-                    window.location.href = "/login";
-                } else {
-                    alert("❌ Lỗi: " + data.error);
-                }
-            } catch (e) { alert("Lỗi kết nối Server"); }
+        if (u.length < 3) {
+          showError("err-user", "Tên đăng nhập phải dài hơn 3 ký tự");
+          isValid = false;
         }
 
-        function showError(id, msg) {
-            const el = document.getElementById(id);
-            el.innerText = msg;
-            el.style.display = 'block';
+        if (p.length < 6) {
+          showError("err-pass", "Mật khẩu quá ngắn (phải >= 6 ký tự)");
+          isValid = false;
         }
+
+        if (p !== c) {
+          showError("err-confirm", "Mật khẩu nhập lại không khớp!");
+          isValid = false;
+        }
+
+        if (!isValid) return; // Nếu lỗi thì dừng lại, không gửi server
+
+        // 3. Gửi API
+        try {
+          const res = await fetch("http://localhost:8080/api/register", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username: u, password: p }),
+          });
+          const data = await res.json();
+
+          if (res.ok) {
+            alert("✅ Đăng ký thành công! Chuyển sang trang đăng nhập...");
+            window.location.href = "/login";
+          } else {
+            alert("❌ Lỗi: " + data.error);
+          }
+        } catch (e) {
+          alert("Lỗi kết nối Server");
+        }
+      }
+
+      function showError(id, msg) {
+        const el = document.getElementById(id);
+        el.innerText = msg;
+        el.style.display = "block";
+      }
     </script>
-</body>
+  </body>
 </html>

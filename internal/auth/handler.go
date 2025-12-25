@@ -78,6 +78,8 @@ func (h *Handler) Login(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not generate token"})
 		return
 	}
+	log.Println("GENERATED TOKEN:", token)
 
+	// 4. Trả về token cho client
 	c.JSON(http.StatusOK, gin.H{"token": token})
 }

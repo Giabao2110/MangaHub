@@ -9,17 +9,21 @@ import (
 	"time"
 
 	"mangahub/pkg/database"
+	"mangahub/internal/chat" 
+	"mangahub/pkg/utils"
+
+
+
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-contrib/gzip"
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v4"
+	//"github.com/golang-jwt/jwt/v4"
 	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 )
 
-var SECRET_KEY = []byte("mangahub_secret_2025")
 var titleCaser = cases.Title(language.Und)
 
 func main() {
@@ -28,6 +32,7 @@ func main() {
 	// =====================
 	db := database.InitDB("./mangahub.db")
 	defer db.Close()
+	chat.InitChatDB(db)
 	log.Println("✅ SQLite connected")
 
 	// =====================
@@ -101,6 +106,7 @@ func main() {
 			return
 		}
 
+
 		var id, hash, role string
 		err := db.QueryRow(
 			"SELECT id, password_hash, role FROM users WHERE username=?",
@@ -119,14 +125,11 @@ func main() {
 		}
 
 		// Tạo JWT Token
-		token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-			"id":   id,
-			"user": u.Username,
-			"role": role,
-			"exp":  time.Now().Add(24 * time.Hour).Unix(),
-		})
-
-		tokenString, _ := token.SignedString(SECRET_KEY)
+		tokenString, err := utils.GenerateToken(id, u.Username)
+		if err != nil {
+			c.JSON(500, gin.H{"error": "Không thể tạo token"})
+			return
+		}
 
 		c.JSON(200, gin.H{
 			"token":    tokenString,
@@ -282,6 +285,35 @@ func main() {
 	r.GET("/admin", func(c *gin.Context) {
     c.File("./web/admin.html")
 	})
+
+	// 1. Khởi tạo Hub quản lý Chat
+	hub := chat.NewHub()
+	go hub.Run()
+
+	// 2. Thiết lập endpoint WebSocket
+	r.GET("/ws", func(c *gin.Context) {
+		tokenStr := c.Query("token")
+		if tokenStr == "" {
+			c.AbortWithStatusJSON(401, gin.H{"error": "Missing token"})
+			return
+		}
+
+		claims, err := utils.ValidateToken(tokenStr)
+		if err != nil {
+			log.Println("❌ Unauthorized WS:", err)
+			c.AbortWithStatusJSON(401, gin.H{"error": "Invalid token"})
+			return
+		}
+
+		log.Printf("✅ WS connected: %s (%s)",
+			claims.Username,
+			claims.UserID,
+		)
+
+		// Cho phép nâng cấp WebSocket
+		chat.ServeWs(hub, c.Writer, c.Request)
+	})
+
 
 	// =====================
 	// START SERVER
